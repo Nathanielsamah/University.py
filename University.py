@@ -240,7 +240,6 @@ def init_database():
     conn = sqlite3.connect('admission_system.db')
     cursor = conn.cursor()
     
-    # Create students table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS students (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -270,7 +269,6 @@ def init_database():
         )
     ''')
     
-    # Create audit log table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -282,7 +280,6 @@ def init_database():
         )
     ''')
     
-    # Create department stats table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS department_stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -301,20 +298,15 @@ def init_database():
     conn.close()
 
 def fix_database_schema():
-    """
-    FIX: Add missing columns to existing database
-    This fixes the 'no such column: status' error
-    """
+    """FIX: Add missing columns to existing database"""
     conn = sqlite3.connect('admission_system.db')
     cursor = conn.cursor()
     
     try:
-        # Get existing columns
         cursor.execute("PRAGMA table_info(students)")
         columns = cursor.fetchall()
         column_names = [col[1] for col in columns]
         
-        # Define all required columns with their types
         required_columns = {
             'student_id': 'TEXT',
             'reference_no': 'TEXT',
@@ -341,7 +333,6 @@ def fix_database_schema():
             'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
         }
         
-        # Add missing columns
         added_columns = []
         for col_name, col_type in required_columns.items():
             if col_name not in column_names:
@@ -361,39 +352,32 @@ def fix_database_schema():
     conn.close()
 
 def generate_student_id():
-    """Generate unique student ID"""
     conn = sqlite3.connect('admission_system.db')
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM students")
     count = cursor.fetchone()[0] + 1
     conn.close()
-    
     year = datetime.now().strftime("%Y")
     return f"STU-{year}-{str(count).zfill(4)}"
 
 def generate_reference_no():
-    """Generate unique reference number"""
     conn = sqlite3.connect('admission_system.db')
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM students")
     count = cursor.fetchone()[0] + 1
     conn.close()
-    
     year = datetime.now().strftime("%Y")
     return f"REF-{year}-{str(count).zfill(4)}"
 
 def save_student_to_db(student_data):
-    """Save student data to database"""
     conn = sqlite3.connect('admission_system.db')
     cursor = conn.cursor()
     
-    # Generate IDs if not provided
     if not student_data.get('student_id'):
         student_data['student_id'] = generate_student_id()
     if not student_data.get('reference_no'):
         student_data['reference_no'] = generate_reference_no()
     
-    # Insert data
     cursor.execute('''
         INSERT INTO students (
             student_id, reference_no, name, nationality, university,
@@ -432,14 +416,12 @@ def save_student_to_db(student_data):
     return student_data['student_id'], student_data['reference_no']
 
 def get_all_students():
-    """Retrieve all students from database"""
     conn = sqlite3.connect('admission_system.db')
     df = pd.read_sql_query("SELECT * FROM students ORDER BY created_at DESC", conn)
     conn.close()
     return df
 
 def get_student_count():
-    """Get total number of students"""
     conn = sqlite3.connect('admission_system.db')
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM students")
@@ -448,7 +430,6 @@ def get_student_count():
     return count
 
 def get_active_students():
-    """Get count of active students"""
     conn = sqlite3.connect('admission_system.db')
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM students WHERE status = 'Active'")
@@ -457,7 +438,6 @@ def get_active_students():
     return count
 
 def get_department_offers():
-    """Get offer count by department/category"""
     conn = sqlite3.connect('admission_system.db')
     df = pd.read_sql_query("""
         SELECT category, program, COUNT(*) as offers,
@@ -471,7 +451,6 @@ def get_department_offers():
     return df
 
 def get_program_stats():
-    """Get detailed statistics by program"""
     conn = sqlite3.connect('admission_system.db')
     df = pd.read_sql_query("""
         SELECT 
@@ -490,7 +469,6 @@ def get_program_stats():
     return df
 
 def get_monthly_trends():
-    """Get monthly enrollment trends"""
     conn = sqlite3.connect('admission_system.db')
     df = pd.read_sql_query("""
         SELECT 
@@ -506,7 +484,6 @@ def get_monthly_trends():
     return df
 
 def log_audit(student_id, action):
-    """Log audit trail"""
     conn = sqlite3.connect('admission_system.db')
     cursor = conn.cursor()
     cursor.execute('''
@@ -719,7 +696,6 @@ def get_course_details(category, course):
     return None
 
 def get_departments():
-    """Get unique departments from course database"""
     departments = set()
     for category in COURSES_DATABASE.values():
         for course in category.values():
@@ -732,7 +708,6 @@ def get_departments():
 # ============================================
 
 def generate_admission_pdf(student_data):
-    """Generates a professional multi-page Admission Offer Letter"""
     buffer = io.BytesIO()
     
     doc = SimpleDocTemplate(
@@ -747,7 +722,6 @@ def generate_admission_pdf(student_data):
     
     styles = getSampleStyleSheet()
     
-    # Enhanced Typography Styles
     title_style = ParagraphStyle(
         'DocTitle', parent=styles['Heading1'], fontName='Helvetica-Bold',
         fontSize=20, leading=24, alignment=TA_CENTER, spaceAfter=10,
@@ -780,7 +754,6 @@ def generate_admission_pdf(student_data):
 
     story = []
     
-    # --- PAGE 1: OFFER & FEES ---
     header_table = [
         [Paragraph("<b>UNIVERSITY OF EXCELLENCE</b>", ParagraphStyle('UniName', parent=meta_style, fontSize=16, textColor=colors.HexColor('#1a1a2e'), alignment=TA_CENTER))]
     ]
@@ -796,7 +769,6 @@ def generate_admission_pdf(student_data):
     story.append(Paragraph("<hr color='#1a1a2e' size='2'/>", meta_style))
     story.append(Spacer(1, 10))
     
-    # Reference Info
     current_date = datetime.now().strftime("%d %b %Y")
     ref_and_date = [
         [Paragraph(f"<b>Reference No.:</b> {student_data['reference_no']}", meta_style), 
@@ -813,16 +785,13 @@ def generate_admission_pdf(student_data):
     story.append(t_meta)
     story.append(Spacer(1, 20))
     
-    # Document Title
     story.append(Paragraph("ADMISSION OFFER LETTER", title_style))
     story.append(Paragraph(f"Academic Year {datetime.now().strftime('%Y')} - {str(int(datetime.now().strftime('%Y')) + 1)}", subtitle_style))
     story.append(Spacer(1, 15))
     
-    # Salutation
     story.append(Paragraph(f"Dear <b>{student_data['name']}</b>,", body_style))
     story.append(Spacer(1, 8))
     
-    # Opening Text
     opening_text = (
         f"We are pleased to inform you that the Academic Board of <b>{student_data['university']}</b> has reviewed "
         f"your application along with the submitted documents and has found you eligible for admission to the "
@@ -833,7 +802,6 @@ def generate_admission_pdf(student_data):
     story.append(Paragraph(opening_text, body_style))
     story.append(Spacer(1, 15))
     
-    # Program & Fee Matrix Table
     fee_matrix = [
         [Paragraph("<b>Program Details</b>", table_header), Paragraph("<b>Information</b>", table_header)],
         [Paragraph("Program Category", table_cell), Paragraph(student_data['category'], table_cell_bold)],
@@ -863,7 +831,6 @@ def generate_admission_pdf(student_data):
     story.append(Paragraph("*Registration fee is a one-time charge, separate from programme and hostel fees.", ParagraphStyle('Note', parent=body_style, fontSize=9, fontName='Helvetica-Oblique', textColor=colors.HexColor('#6c757d'))))
     story.append(Spacer(1, 15))
     
-    # Conditions
     story.append(Paragraph("<b>CONDITIONS FOR ACCEPTANCE</b>", table_cell_bold))
     story.append(Spacer(1, 6))
     
@@ -883,7 +850,6 @@ def generate_admission_pdf(student_data):
     
     story.append(PageBreak())
     
-    # --- PAGE 2: BANK DETAILS & INSTRUCTIONS ---
     story.append(Paragraph("<b>FEE PAYMENT &amp; BANK DETAILS</b>", title_style))
     story.append(Spacer(1, 5))
     
@@ -900,7 +866,6 @@ def generate_admission_pdf(student_data):
     story.append(Paragraph("Please use the following Bank Account details to transfer the Fee:", body_style))
     story.append(Spacer(1, 8))
     
-    # Bank Details Table
     bank_matrix = [
         [Paragraph("<b>Bank Details</b>", table_header), Paragraph("<b>Information</b>", table_header)],
         [Paragraph("Bank Name", table_cell), Paragraph(student_data['bank_name'], table_cell)],
@@ -923,7 +888,6 @@ def generate_admission_pdf(student_data):
     story.append(t_bank)
     story.append(Spacer(1, 15))
     
-    # Important Instructions
     story.append(Paragraph("<b>IMPORTANT INSTRUCTIONS</b>", table_cell_bold))
     story.append(Spacer(1, 6))
     instructions = [
@@ -958,7 +922,6 @@ def generate_admission_pdf(student_data):
 # ============================================
 
 def create_department_offer_chart(df):
-    """Create a bar chart showing offers by department"""
     if df.empty:
         return None
     
@@ -997,7 +960,6 @@ def create_department_offer_chart(df):
     return fig
 
 def create_program_offer_chart(df):
-    """Create a bar chart showing offers by program"""
     if df.empty:
         return None
     
@@ -1044,7 +1006,6 @@ def create_program_offer_chart(df):
     return fig
 
 def create_monthly_trend_chart(df):
-    """Create a line chart showing monthly enrollment trends"""
     if df.empty:
         return None
     
@@ -1083,7 +1044,6 @@ def create_monthly_trend_chart(df):
     return fig
 
 def create_pie_chart(df):
-    """Create a pie chart showing distribution by department"""
     if df.empty:
         return None
     
@@ -1113,7 +1073,6 @@ def create_pie_chart(df):
     return fig
 
 def create_donut_chart(df):
-    """Create a donut chart showing active vs inactive offers"""
     if df.empty:
         return None
     
@@ -1145,7 +1104,6 @@ def create_donut_chart(df):
     return fig
 
 def create_department_summary_table(df):
-    """Create a summary table by department"""
     if df.empty:
         return None
     
@@ -1174,7 +1132,7 @@ def main():
     # FIX: Repair any old database schema issues
     fix_database_schema()
     
-    # Sidebar Navigation - FIXED
+    # Sidebar Navigation
     with st.sidebar:
         st.markdown("### 🎓 Navigation")
         page = st.radio(
@@ -1214,7 +1172,6 @@ def main():
     if page == "🏠 Dashboard":
         st.markdown('<div class="main-header">🏛️ Admission Management Dashboard</div>', unsafe_allow_html=True)
         
-        # Statistics Cards
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -1252,7 +1209,6 @@ def main():
         
         st.markdown("---")
         
-        # Recent Students
         st.markdown('<div class="sub-header">📋 Recently Enrolled Students</div>', unsafe_allow_html=True)
         
         df = get_all_students()
@@ -1263,7 +1219,6 @@ def main():
         else:
             st.info("No students enrolled yet. Start by creating a new admission!")
         
-        # Quick Actions
         st.markdown('<div class="sub-header">⚡ Quick Actions</div>', unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -1283,11 +1238,9 @@ def main():
     elif page == "📝 New Admission":
         st.markdown('<div class="main-header">📝 New Student Admission</div>', unsafe_allow_html=True)
         
-        # Generate automatic IDs
         auto_student_id = generate_student_id()
         auto_ref_no = generate_reference_no()
         
-        # Highlighted Auto ID section
         st.markdown(f"""
         <div class="highlight-box">
             <strong>📌 Automatic ID Generation</strong><br>
@@ -1410,7 +1363,6 @@ def main():
                         st.exception(e)
         
         with col2:
-            # Clean fee summary
             st.markdown('<div class="sub-header">📄 Fee Summary</div>', unsafe_allow_html=True)
             
             st.markdown("""
@@ -1472,7 +1424,6 @@ def main():
             </div>
             """, unsafe_allow_html=True)
             
-            # Additional Note
             st.markdown("""
             <div style="background: #fff3e0; padding: 1rem; border-radius: 8px; margin-top: 1rem; border-left: 4px solid #f57c00;">
                 <small style="color: #e65100;">💡 <b>Note:</b> Minimum payment includes registration fee and 50% of first semester fee after scholarship.</small>
@@ -1514,7 +1465,8 @@ def main():
                     return 'background-color: #cce5ff'
                 return ''
             
-            st.dataframe(df_display.style.applymap(color_status, subset=['status']), use_container_width=True)
+            # FIXED: Changed applymap to map (for newer pandas versions)
+            st.dataframe(df_display.style.map(color_status, subset=['status']), use_container_width=True)
             
             st.markdown("---")
             col1, col2 = st.columns(2)
@@ -1534,13 +1486,11 @@ def main():
     elif page == "📈 Reports":
         st.markdown('<div class="main-header">📈 Reports & Analytics</div>', unsafe_allow_html=True)
         
-        # Get data
         df_offers = get_department_offers()
         df_stats = get_program_stats()
         df_trends = get_monthly_trends()
         
         if not df_offers.empty:
-            # Overview Stats
             st.markdown('<div class="sub-header">📊 Overview Statistics</div>', unsafe_allow_html=True)
             
             col1, col2, col3, col4 = st.columns(4)
@@ -1574,10 +1524,8 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
             
-            # Charts Section
             st.markdown('<div class="sub-header">📊 Visual Analytics</div>', unsafe_allow_html=True)
             
-            # Row 1: Two charts side by side
             col1, col2 = st.columns(2)
             
             with col1:
@@ -1590,29 +1538,24 @@ def main():
                 if donut_chart:
                     st.plotly_chart(donut_chart, use_container_width=True)
             
-            # Row 2: Department bar chart
             dept_chart = create_department_offer_chart(df_offers)
             if dept_chart:
                 st.plotly_chart(dept_chart, use_container_width=True)
             
-            # Row 3: Program bar chart
             prog_chart = create_program_offer_chart(df_offers)
             if prog_chart:
                 st.plotly_chart(prog_chart, use_container_width=True)
             
-            # Row 4: Monthly trend
             if not df_trends.empty:
                 trend_chart = create_monthly_trend_chart(df_trends)
                 if trend_chart:
                     st.plotly_chart(trend_chart, use_container_width=True)
             
-            # Department Summary Table
             st.markdown('<div class="sub-header">📋 Department Summary</div>', unsafe_allow_html=True)
             summary_table = create_department_summary_table(df_offers)
             if summary_table is not None:
                 st.dataframe(summary_table, use_container_width=True)
                 
-                # Download report
                 csv = summary_table.to_csv(index=False)
                 st.download_button(
                     label="📥 Download Summary Report",
@@ -1631,18 +1574,15 @@ def main():
         df_offers = get_department_offers()
         
         if not df_offers.empty:
-            # Department selector
             departments = get_departments()
             selected_dept = st.selectbox("Select Department", ["All Departments"] + departments)
             
             if selected_dept != "All Departments":
-                # Filter data for selected department
                 dept_data = df_offers[df_offers['category'].str.contains(selected_dept, case=False)]
                 
                 if not dept_data.empty:
                     st.markdown(f'<div class="sub-header">📊 {selected_dept} - Department Report</div>', unsafe_allow_html=True)
                     
-                    # Department stats
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("Total Offers", dept_data['offers'].sum())
@@ -1654,11 +1594,9 @@ def main():
                         acceptance = (dept_data['active'].sum() / dept_data['offers'].sum() * 100) if dept_data['offers'].sum() > 0 else 0
                         st.metric("Acceptance Rate", f"{acceptance:.1f}%")
                     
-                    # Program-wise breakdown
                     st.markdown('<div class="sub-header">📋 Program-wise Breakdown</div>', unsafe_allow_html=True)
                     st.dataframe(dept_data[['program', 'offers', 'active', 'inactive']], use_container_width=True)
                     
-                    # Bar chart for programs in department
                     fig = go.Figure(data=[
                         go.Bar(
                             name='Total Offers',
@@ -1692,7 +1630,6 @@ def main():
                     
                     st.plotly_chart(fig, use_container_width=True)
                     
-                    # Export department report
                     csv = dept_data.to_csv(index=False)
                     st.download_button(
                         label=f"📥 Download {selected_dept} Report",
@@ -1704,10 +1641,8 @@ def main():
                 else:
                     st.warning(f"No data available for {selected_dept}")
             else:
-                # Show all departments overview
                 st.markdown('<div class="sub-header">📊 All Departments Overview</div>', unsafe_allow_html=True)
                 
-                # Summary by department
                 dept_summary = df_offers.groupby('category').agg({
                     'offers': 'sum',
                     'active': 'sum',
@@ -1717,7 +1652,6 @@ def main():
                 dept_summary.columns = ['Department', 'Total Offers', 'Active', 'Inactive']
                 st.dataframe(dept_summary, use_container_width=True)
                 
-                # Department bar chart
                 fig = go.Figure(data=[
                     go.Bar(
                         x=dept_summary['Department'],
@@ -1742,10 +1676,8 @@ def main():
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Heatmap of departments and programs
                 st.markdown('<div class="sub-header">🔥 Department-Program Heatmap</div>', unsafe_allow_html=True)
                 
-                # Create pivot table for heatmap
                 heatmap_data = df_offers.pivot_table(
                     index='category', 
                     columns='program', 
